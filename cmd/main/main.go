@@ -29,6 +29,7 @@ func main() {
 	e.PUT("/applications/:token/chats/:number", placeHolderHandler)
 
 	// Messages routes
+
 	e.POST("/applications/:token/chats/:chat_number/messages", placeHolderHandler)
 	e.GET("/applications/:token/chats/:chat_number/messages", placeHolderHandler)
 	e.GET("/applications/:token/chats/:chat_number/:number", placeHolderHandler)
