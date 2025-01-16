@@ -1,0 +1,35 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat-system-container
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      database:
+        condition: service_healthy
+    env_file:
+    - .env
+
+  database:
+    platform: linux/amd64
+    image: mysql:8.0
+    container_name: mysql-container
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_volume:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mysql", "-u${DB_USER}","-h${DB_HOST}","-p${DB_PASSWORD}", "-e", "USE ${DB_NAME};"]
+      interval: 25s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_volume:
