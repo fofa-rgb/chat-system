@@ -10,7 +10,7 @@ services:
       database:
         condition: service_healthy
     env_file:
-    - .env
+      - .env
 
   database:
     platform: linux/amd64
@@ -20,16 +20,30 @@ services:
       - "3306:3306"
     volumes:
       - mysql_volume:/var/lib/mysql
+      - ./migrations:/flyway/sql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     healthcheck:
-      test: ["CMD", "mysql", "-u${DB_USER}","-h${DB_HOST}","-p${DB_PASSWORD}", "-e", "USE ${DB_NAME};"]
+      test: ["CMD", "mysql", "-u${DB_USER}", "-h${DB_HOST}", "-p${DB_PASSWORD}", "-e", "USE ${DB_NAME};"]
       interval: 25s
       timeout: 5s
       retries: 10
+
+  flyway:
+    image: flyway/flyway:latest
+    container_name: flyway-container
+    environment:
+      FLYWAY_URL: jdbc:mysql://${DB_HOST}:3306/${DB_NAME}
+      FLYWAY_USER: ${DB_USER}
+      FLYWAY_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./migrations:/flyway/sql
+    depends_on:
+      - database
+    command: -connectRetries=60 migrate
 
 volumes:
   mysql_volume:
