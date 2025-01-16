@@ -6,11 +6,21 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func placeHolderHandler(c echo.Context) error {
 	return c.String(http.StatusOK, "Not yet implemented")
+}
+
+type CustomValidator struct {
+	validator *validator.Validate
+}
+
+func (cv *CustomValidator) Validate(i interface{}) error {
+	return cv.validator.Struct(i)
 }
 
 func main() {
@@ -20,7 +30,11 @@ func main() {
 	database.ESCreateIndexIfNotExist()
 
 	e := echo.New()
-	appHandlers := &handlers.ApplicationHandlers{}
+	e.Use(middleware.Logger())
+	v := validator.New()
+	e.Validator = &CustomValidator{validator: v}
+
+	appHandlers := handlers.CreateApplicationHandlers()
 
 	// Root route
 	e.GET("/", func(c echo.Context) error {
