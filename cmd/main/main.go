@@ -1,10 +1,15 @@
 package main
 
 import (
+	"chat-system/internal/database"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
+
+func placeHolderHandler(c echo.Context) error {
+	return c.String(http.StatusOK, "Not yet implemented")
+}
 
 func main() {
 	e := echo.New()
@@ -36,9 +41,10 @@ func main() {
 	e.GET("/applications/:token/chats/:chat_number/messages/search", placeHolderHandler)
 	e.PUT("/applications/:token/chats/:chat_number/:number", placeHolderHandler)
 
-	e.Logger.Fatal(e.Start(":1323"))
-}
+	e.POST("applications/:token/chats/:chat_number/messages/index", placeHolderHandler)
 
-func placeHolderHandler(c echo.Context) error {
-	return c.String(http.StatusOK, "Not yet implemented")
+	database.ESClientConnection()
+	database.ESCreateIndexIfNotExist()
+	e.Logger.Fatal(e.Start(":1323"))
+
 }
