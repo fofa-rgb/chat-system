@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chat-system/api/handlers"
 	"chat-system/internal/database"
 	"net/http"
 
@@ -13,6 +14,7 @@ func placeHolderHandler(c echo.Context) error {
 
 func main() {
 	e := echo.New()
+	appHandlers := &handlers.ApplicationHandlers{}
 
 	// Root route
 	e.GET("/", func(c echo.Context) error {
@@ -20,7 +22,7 @@ func main() {
 	})
 
 	// Applications routes
-	e.POST("/applications", placeHolderHandler)
+	e.POST("/applications", appHandlers.HandleCreateApplication)
 	e.GET("/applications", placeHolderHandler)
 	e.GET("/applications/:token", placeHolderHandler)
 	e.PUT("/applications/:token", placeHolderHandler)
