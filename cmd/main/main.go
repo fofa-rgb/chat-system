@@ -43,9 +43,9 @@ func main() {
 
 	// Applications routes
 	e.POST("/applications", appHandlers.HandleCreateApplication)
-	e.GET("/applications", placeHolderHandler)
-	e.GET("/applications/:token", placeHolderHandler)
-	e.PUT("/applications/:token", placeHolderHandler)
+	e.GET("/applications", appHandlers.HandleGetAllApplications)
+	e.GET("/applications/:token", appHandlers.HandleGetApplicationByToken)
+	e.PUT("/applications/:token", appHandlers.HandleUpdateApplicationName)
 
 	// Chats routes
 	e.POST("/applications/:token/chats", placeHolderHandler)

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"chat-system/internal/models"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -28,9 +29,29 @@ func (r *ApplicationsDatabaseHandler) InsertApplication(name string, token strin
 	return nil
 }
 
-func (r *ApplicationsDatabaseHandler) UpdateApplication(id int64, name string) error {
-	query := "UPDATE Applications SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2"
-	_, err := r.database.Exec(query, name, id)
+func (r *ApplicationsDatabaseHandler) GetApplicationByToken(token string) (models.Application, error) {
+	app := models.Application{}
+	query := "SELECT * FROM Applications WHERE token = ?"
+	err := r.database.Get(&app, query, token)
+	if err != nil {
+		return models.Application{}, fmt.Errorf("failed to get applications: %w", err)
+	}
+	return app, nil
+}
+
+func (r *ApplicationsDatabaseHandler) GetAllApplications() ([]models.Application, error) {
+	allApplications := []models.Application{}
+	query := "SELECT * FROM Applications"
+	err := r.database.Select(&allApplications, query)
+	if err != nil {
+		return []models.Application{}, fmt.Errorf("failed to get applications: %w", err)
+	}
+	return allApplications, nil
+}
+
+func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name string) error {
+	query := "UPDATE Applications SET name = ? WHERE token = ?"
+	_, err := r.database.Exec(query, name, token)
 	if err != nil {
 		return fmt.Errorf("failed to update application: %w", err)
 	}
