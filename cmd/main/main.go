@@ -50,8 +50,8 @@ func main() {
 
 	// Chats routes
 	e.POST("/applications/:token/chats", chatHandlers.HandleCreateChat)
-	e.GET("/applications/:token/chats", placeHolderHandler)
-	e.GET("/applications/:token/chats/:number", placeHolderHandler)
+	e.GET("/applications/:token/chats", chatHandlers.HandleGetAllChatsForApplication)
+	e.GET("/applications/:token/chats/:number", chatHandlers.HandleGetChat)
 	e.PUT("/applications/:token/chats/:number", placeHolderHandler)
 
 	// Messages routes

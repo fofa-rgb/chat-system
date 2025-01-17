@@ -1,6 +1,7 @@
 package database
 
 import (
+	"chat-system/internal/models"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -39,6 +40,26 @@ func (r *ChatsDatabaseHandler) InsertChat(appId int64, subject string) (int64, e
 
 	return chatNumber, nil
 }
+func (r *ChatsDatabaseHandler) GetChatByApplicationIdAndChatNumber(appId int64, chatNumber int64) (models.Chat, error) {
+	chat := models.Chat{}
+	query := "SELECT * FROM Chats WHERE application_id = ? AND number = ?"
+	err := r.database.Get(&chat, query, appId)
+	if err != nil {
+		return models.Chat{}, fmt.Errorf("failed to get chat: %w", err)
+	}
+	return chat, nil
+}
+
+func (r *ChatsDatabaseHandler) GetAllChatsForAnApp(appId int64) ([]models.Chat, error) {
+	allChats := []models.Chat{}
+	query := "SELECT * FROM Chats WHERE application_id = ?"
+	err := r.database.Select(&allChats, query, appId)
+	if err != nil {
+		return []models.Chat{}, fmt.Errorf("failed to get chats: %w", err)
+	}
+	return allChats, nil
+}
+
 func (r *ChatsDatabaseHandler) GetChatIdFromAppTokenAndChatNum(appToken string, chatNumber int64) (int64, error) {
 	var chatID int64
 	query := `

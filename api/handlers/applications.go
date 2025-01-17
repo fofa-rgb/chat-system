@@ -19,17 +19,6 @@ func CreateApplicationHandlers() *ApplicationHandlers {
 	return &ApplicationHandlers{DBHandler: dbHandler}
 }
 
-type createApplicationRequest struct {
-	Name string `json:"name" validate:"required"`
-}
-
-type createApplicationResponse struct {
-	Token string `json:"token"`
-}
-type updateApplicationNameRequest struct {
-	NewName string `json:"newName"`
-}
-
 func (h *ApplicationHandlers) HandleCreateApplication(c echo.Context) error {
 	request := new(createApplicationRequest)
 	if err := c.Bind(request); err != nil {
@@ -49,7 +38,7 @@ func (h *ApplicationHandlers) HandleCreateApplication(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	response := &Response[createApplicationResponse]{Data: createApplicationResponse{Token: token}}
+	response := &response[createApplicationResponse]{Data: createApplicationResponse{Token: token}}
 
 	return c.JSON(http.StatusOK, response)
 }
@@ -66,7 +55,7 @@ func (h *ApplicationHandlers) HandleGetApplicationByToken(c echo.Context) error 
 		Token:      app.Token,
 		ChatsCount: app.ChatsCount,
 	}
-	response := &Response[models.UserExposedApplication]{Data: userApp}
+	response := &response[models.UserExposedApplication]{Data: userApp}
 	return c.JSON(http.StatusOK, response)
 }
 func (h *ApplicationHandlers) HandleGetAllApplications(c echo.Context) error {
@@ -83,7 +72,7 @@ func (h *ApplicationHandlers) HandleGetAllApplications(c echo.Context) error {
 			ChatsCount: app.ChatsCount,
 		})
 	}
-	response := &Response[[]models.UserExposedApplication]{Data: userExposedApps}
+	response := &response[[]models.UserExposedApplication]{Data: userExposedApps}
 
 	return c.JSON(http.StatusOK, response)
 }

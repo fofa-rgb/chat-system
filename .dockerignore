@@ -1,0 +1,30 @@
+# General exclusions
+.git
+.gitignore
+*.md
+*.log
+*.tmp
+
+# Editor and IDE files
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Build and output artifacts
+*.exe
+*.out
+*.o
+*.a
+*.so
+*.dll
+bin/
+dist/
+
+# OS-specific files
+*.DS_Store
+Thumbs.db
