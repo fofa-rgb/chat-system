@@ -1,7 +1,7 @@
 -- Create the Applications table
 CREATE TABLE Applications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name TEXT NOT NULL,
     token VARCHAR(255) NOT NULL UNIQUE,
     chats_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -12,11 +12,13 @@ CREATE TABLE Applications (
 CREATE TABLE Chats (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     application_id BIGINT NOT NULL,
+    subject TEXT NOT NULL,
     number INT NOT NULL,
     messages_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (application_id) REFERENCES Applications(id) ON DELETE CASCADE
+    FOREIGN KEY (application_id) REFERENCES Applications(id) ON DELETE CASCADE,
+    UNIQUE (application_id, number)
 );
 
 -- Create the Messages table
@@ -27,5 +29,6 @@ CREATE TABLE Messages (
     body TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (chat_id) REFERENCES Chats(id) ON DELETE CASCADE
+    FOREIGN KEY (chat_id) REFERENCES Chats(id) ON DELETE CASCADE,
+    UNIQUE (chat_id, number)
 );

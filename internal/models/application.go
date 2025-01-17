@@ -5,7 +5,7 @@ import "time"
 type UserExposedApplication struct {
 	Name       string `json:"name" db:"name"`
 	Token      string `json:"token" db:"token"`
-	ChatsCount int    `json:"chatsCount" db:"chats_count"`
+	ChatsCount int64  `json:"chatsCount" db:"chats_count"`
 }
 
 type Application struct {

@@ -58,3 +58,13 @@ func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name s
 
 	return nil
 }
+
+func (r *ApplicationsDatabaseHandler) GetApplicationIdByToken(token string) (int64, error) {
+	var id int64
+	query := "SELECT id FROM Applications WHERE token = ?"
+	err := r.database.Get(&id, query, token)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get application id: %w", err)
+	}
+	return id, nil
+}

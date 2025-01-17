@@ -1,12 +1,45 @@
 package database
 
-import "github.com/jmoiron/sqlx"
+import (
+	"fmt"
 
-type chatsDatabaseHandler struct {
+	"github.com/jmoiron/sqlx"
+)
+
+type ChatsDatabaseHandler struct {
 	database *sqlx.DB
 }
 
-func (r *chatsDatabaseHandler) GetChatIdFromAppTokenAndChatNum(appToken string, chatNumber int64) (int64, error) {
+func NewChatsDatabaseHandler() *ChatsDatabaseHandler {
+	return &ChatsDatabaseHandler{database: DATABASE}
+}
+
+func (r *ChatsDatabaseHandler) InsertChat(appId int64, subject string) (int64, error) {
+	var chatNumber int64
+
+	tx := r.database.MustBegin()
+	defer tx.Rollback()
+
+	err := tx.Get(&chatNumber, `SELECT COALESCE(MAX(number), 0) FROM Chats WHERE application_id = ? FOR UPDATE`, appId)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch max chat number: %w", err)
+	}
+
+	chatNumber++
+
+	_, err = tx.Exec(`INSERT INTO Chats (application_id, subject, number) VALUES (?, ?,?)`, appId, subject, chatNumber)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert new chat: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return chatNumber, nil
+}
+func (r *ChatsDatabaseHandler) GetChatIdFromAppTokenAndChatNum(appToken string, chatNumber int64) (int64, error) {
 	var chatID int64
 	query := `
 		SELECT c.id

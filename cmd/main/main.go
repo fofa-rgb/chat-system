@@ -35,6 +35,7 @@ func main() {
 	e.Validator = &CustomValidator{validator: v}
 
 	appHandlers := handlers.CreateApplicationHandlers()
+	chatHandlers := handlers.CreateChatHandlers()
 
 	// Root route
 	e.GET("/", func(c echo.Context) error {
@@ -48,7 +49,7 @@ func main() {
 	e.PUT("/applications/:token", appHandlers.HandleUpdateApplicationName)
 
 	// Chats routes
-	e.POST("/applications/:token/chats", placeHolderHandler)
+	e.POST("/applications/:token/chats", chatHandlers.HandleCreateChat)
 	e.GET("/applications/:token/chats", placeHolderHandler)
 	e.GET("/applications/:token/chats/:number", placeHolderHandler)
 	e.PUT("/applications/:token/chats/:number", placeHolderHandler)
