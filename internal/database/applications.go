@@ -50,7 +50,7 @@ func (r *ApplicationsDatabaseHandler) GetAllApplications() ([]models.Application
 }
 
 func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name string) (models.Application, error) {
-	application := models.Application{}
+	updatedApplication := models.Application{}
 	query := `
         UPDATE Applications
         SET name = ?
@@ -69,7 +69,7 @@ func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name s
         FROM Applications
         WHERE token = ?
     `
-	err = tx.Get(&application, fetchQuery, token)
+	err = tx.Get(&updatedApplication, fetchQuery, token)
 	if err != nil {
 		return models.Application{}, fmt.Errorf("failed to fetch updated application: %w", err)
 	}
@@ -78,7 +78,7 @@ func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name s
 		return models.Application{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return application, nil
+	return updatedApplication, nil
 }
 
 func (r *ApplicationsDatabaseHandler) GetApplicationIdByToken(token string) (int64, error) {

@@ -36,6 +36,7 @@ func main() {
 
 	appHandlers := handlers.CreateApplicationHandlers()
 	chatHandlers := handlers.CreateChatHandlers()
+	messageHandlers := handlers.CreateMessageHandlers()
 
 	// Root route
 	e.GET("/", func(c echo.Context) error {
@@ -51,15 +52,16 @@ func main() {
 	// Chats routes
 	e.POST("/applications/:token/chats", chatHandlers.HandleCreateChat)
 	e.GET("/applications/:token/chats", chatHandlers.HandleGetAllChatsForApplication)
-	e.GET("/applications/:token/chats/:number", chatHandlers.HandleGetChat)
-	e.PATCH("/applications/:token/chats/:number", chatHandlers.HandleUpdateChatSubject)
+	e.GET("/applications/:token/chats/:chat_number", chatHandlers.HandleGetChat)
+	e.PATCH("/applications/:token/chats/:chat_number", chatHandlers.HandleUpdateChatSubject)
 
 	// Messages routes
-	e.POST("/applications/:token/chats/:chat_number/messages", placeHolderHandler)
-	e.GET("/applications/:token/chats/:chat_number/messages", placeHolderHandler)
-	e.GET("/applications/:token/chats/:chat_number/:number", placeHolderHandler)
+	e.POST("/applications/:token/chats/:chat_number/messages", messageHandlers.HandleCreateMessage)
+	e.GET("/applications/:token/chats/:chat_number/messages", messageHandlers.HandleGetAllMessagesForChat)
+	e.GET("/applications/:token/chats/:chat_number/messages/:message_number", messageHandlers.HandleGetMessage)
+	e.PATCH("/applications/:token/chats/:chat_number/messages/:message_number", messageHandlers.HandleUpdateMessageBody)
+	//elastic search messages
 	e.GET("/applications/:token/chats/:chat_number/messages/search", placeHolderHandler)
-	e.PUT("/applications/:token/chats/:chat_number/:number", placeHolderHandler)
 	e.POST("/applications/:token/chats/:chat_number/messages/index", placeHolderHandler)
 
 	port := os.Getenv("APP_PORT")

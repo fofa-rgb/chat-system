@@ -29,3 +29,12 @@ type createChatResponse struct {
 type updateChatRequest struct {
 	NewSubject string `json:"newSubject" validate:"required"`
 }
+
+//messages
+type createMessageRequest struct {
+	Body string `json:"body" validate:"required"`
+}
+
+type updateMessageRequest struct {
+	NewBody string `json:"newBody" validate:"required"`
+}

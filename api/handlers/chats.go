@@ -5,7 +5,6 @@ import (
 	"chat-system/internal/models"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
@@ -17,9 +16,9 @@ type ChatHandlers struct {
 
 func CreateChatHandlers() *ChatHandlers {
 	chatsDbHandler := database.NewChatsDatabaseHandler()
-	applicationsDbHandler := database.NewChatsDatabaseHandler()
+	applicationsDbHandler := database.NewApplicationsDatabaseHandler()
 
-	return &ChatHandlers{ChatsDBHandler: chatsDbHandler, ApplicationsDBHandler: (*database.ApplicationsDatabaseHandler)(applicationsDbHandler)}
+	return &ChatHandlers{ChatsDBHandler: chatsDbHandler, ApplicationsDBHandler: applicationsDbHandler}
 }
 
 func (h *ChatHandlers) HandleCreateChat(c echo.Context) error {
@@ -80,13 +79,9 @@ func (h *ChatHandlers) HandleGetAllChatsForApplication(c echo.Context) error {
 
 func (h *ChatHandlers) HandleGetChat(c echo.Context) error {
 	token := c.Param("token")
-	chatNumberStr := c.Param("number")
-
-	// Convert chatNumber to int64
-	chatNumber, err := strconv.ParseInt(chatNumberStr, 10, 64)
+	chatNumber, err := parseInt64Param("chat_number", c)
 	if err != nil {
-		log.Printf("error parsing chat number: %v", err)
-		return echo.ErrBadRequest
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	applicationId, err := h.ApplicationsDBHandler.GetApplicationIdByToken(token)
@@ -114,7 +109,10 @@ func (h *ChatHandlers) HandleGetChat(c echo.Context) error {
 
 func (h *ChatHandlers) HandleUpdateChatSubject(c echo.Context) error {
 	token := c.Param("token")
-	chatNumberStr := c.Param("number")
+	chatNumber, err := parseInt64Param("chat_number", c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	request := new(updateChatRequest)
 	if err := c.Bind(request); err != nil {
 		log.Printf("error binding request: %v", err)
@@ -122,11 +120,6 @@ func (h *ChatHandlers) HandleUpdateChatSubject(c echo.Context) error {
 	}
 	if err := c.Validate(request); err != nil {
 		log.Printf("error validating request: %v", err)
-		return echo.ErrBadRequest
-	}
-	chatNumber, err := strconv.ParseInt(chatNumberStr, 10, 64)
-	if err != nil {
-		log.Printf("error parsing chat number: %v", err)
 		return echo.ErrBadRequest
 	}
 

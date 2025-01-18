@@ -60,14 +60,13 @@ func (r *ChatsDatabaseHandler) GetAllChatsForAnApp(appId int64) ([]models.Chat, 
 	return allChats, nil
 }
 func (r *ChatsDatabaseHandler) UpdateChatSubject(appId int64, chatNumber int64, newSubject string) (models.Chat, error) {
-	chat := models.Chat{}
+	updatedChat := models.Chat{}
 	query := `
         UPDATE Chats
         SET subject = ?
         WHERE application_id = ? AND number = ?
     `
 
-	// Start a transaction
 	tx := r.database.MustBegin()
 	defer tx.Rollback()
 
@@ -81,7 +80,7 @@ func (r *ChatsDatabaseHandler) UpdateChatSubject(appId int64, chatNumber int64, 
         SELECT *
         FROM Chats
         WHERE application_id = ? AND number = ?    `
-	err = tx.Get(&chat, fetchQuery, appId, chatNumber)
+	err = tx.Get(&updatedChat, fetchQuery, appId, chatNumber)
 	if err != nil {
 		tx.Rollback()
 		return models.Chat{}, fmt.Errorf("failed to fetch updated chat: %w", err)
@@ -90,5 +89,15 @@ func (r *ChatsDatabaseHandler) UpdateChatSubject(appId int64, chatNumber int64, 
 		return models.Chat{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return chat, nil
+	return updatedChat, nil
+}
+
+func (r *ChatsDatabaseHandler) GetChatIdByAppIdAndChatNumber(appId int64, chatNumber int64) (int64, error) {
+	var id int64
+	query := "SELECT id FROM Chats WHERE application_id = ? AND number = ?"
+	err := r.database.Get(&id, query, appId, chatNumber)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get chat id: %w", err)
+	}
+	return id, nil
 }
