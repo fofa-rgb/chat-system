@@ -6,21 +6,59 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 type ChatHandlers struct {
 	ChatsDBHandler        *database.ChatsDatabaseHandler
 	ApplicationsDBHandler *database.ApplicationsDatabaseHandler
+	WriteQueue            chan ChatWriteRequest
+	TaskStatusMap         map[string]*ChatTaskStatus
+}
+type ChatTaskStatus struct {
+	Status     string // "Pending", "Completed", "Error"
+	ChatNumber int64
+	Error      string
+}
+
+type ChatWriteRequest struct {
+	TaskID        string
+	ApplicationID int64
+	Subject       string
 }
 
 func CreateChatHandlers() *ChatHandlers {
 	chatsDbHandler := database.NewChatsDatabaseHandler()
 	applicationsDbHandler := database.NewApplicationsDatabaseHandler()
 
-	return &ChatHandlers{ChatsDBHandler: chatsDbHandler, ApplicationsDBHandler: applicationsDbHandler}
+	handler := &ChatHandlers{
+		ChatsDBHandler:        chatsDbHandler,
+		ApplicationsDBHandler: applicationsDbHandler,
+		WriteQueue:            make(chan ChatWriteRequest, 1000), // Adjust buffer size as needed
+		TaskStatusMap:         make(map[string]*ChatTaskStatus),
+	}
+
+	// Start the background worker
+	go handler.startWorker()
+
+	return handler
 }
 
+func (h *ChatHandlers) startWorker() {
+	for req := range h.WriteQueue {
+		status := h.TaskStatusMap[req.TaskID]
+		chatNum, err := h.ChatsDBHandler.InsertChat(req.ApplicationID, req.Subject)
+		if err != nil {
+			log.Printf("Error inserting chat: %v", err)
+			status.Status = "Error"
+			status.Error = "Failed to create chat"
+		} else {
+			status.Status = "Completed"
+			status.ChatNumber = chatNum
+		}
+	}
+}
 func (h *ChatHandlers) HandleCreateChat(c echo.Context) error {
 	token := c.Param("token")
 	request := new(createChatRequest)
@@ -39,15 +77,24 @@ func (h *ChatHandlers) HandleCreateChat(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	chatNum, err := h.ChatsDBHandler.InsertChat(applicationId, request.Subject)
-	if err != nil {
-		log.Printf("error inserting chat: %v", err)
-		return echo.ErrInternalServerError
+	taskID := uuid.New().String()
+
+	h.TaskStatusMap[taskID] = &ChatTaskStatus{
+		Status: "Pending",
 	}
 
-	response := &response[createChatResponse]{Data: createChatResponse{ChatNumber: chatNum}}
+	// Push the request to the queue
+	h.WriteQueue <- ChatWriteRequest{
+		TaskID:        taskID,
+		ApplicationID: applicationId,
+		Subject:       request.Subject,
+	}
 
-	return c.JSON(http.StatusOK, response)
+	// Respond with the updated status-check URL
+	statusURL := c.Scheme() + "://" + c.Request().Host + "/chats/status/" + taskID
+	return c.JSON(http.StatusAccepted, map[string]string{
+		"status_url": statusURL,
+	})
 }
 
 func (h *ChatHandlers) HandleGetAllChatsForApplication(c echo.Context) error {
@@ -144,4 +191,21 @@ func (h *ChatHandlers) HandleUpdateChatSubject(c echo.Context) error {
 	response := &response[models.UserExposedChat]{Data: userExposedChat}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h *ChatHandlers) HandleGetStatus(c echo.Context) error {
+	taskID := c.Param("taskID")
+
+	status, exists := h.TaskStatusMap[taskID]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"error": "Task not found",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status":      status.Status,
+		"chat_number": status.ChatNumber,
+		"error":       status.Error,
+	})
 }

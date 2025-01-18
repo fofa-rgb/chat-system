@@ -67,6 +67,11 @@ func main() {
 	e.GET("/applications/:token/chats/:chat_number/messages", messageHandlers.HandleGetAllMessagesForChat)
 	e.GET("/applications/:token/chats/:chat_number/messages/:message_number", messageHandlers.HandleGetMessage)
 	e.PATCH("/applications/:token/chats/:chat_number/messages/:message_number", messageHandlers.HandleUpdateMessageBody)
+
+	//message queue status routes
+	e.GET("/chats/status/:taskID", chatHandlers.HandleGetStatus)
+	e.GET("/messages/status/:taskID", messageHandlers.HandleGetMessageStatus)
+
 	//elastic search messages
 	e.GET("/applications/:token/chats/:chat_number/messages/search", messageHandlers.HandleSearchMessages)
 	e.POST("/applications/:token/chats/:chat_number/messages/index", placeHolderHandler)

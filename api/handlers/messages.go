@@ -9,24 +9,64 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-type MessageHandler struct {
+type MessageHandlers struct {
 	MessagesDBHandler     *database.MessagesDatabaseHandler
 	ChatsDBHandler        *database.ChatsDatabaseHandler
 	ApplicationsDBHandler *database.ApplicationsDatabaseHandler
+	WriteQueue            chan MessageWriteRequest
+	TaskStatusMap         map[string]*MessageTaskStatus
 }
 
-func CreateMessageHandlers() *MessageHandler {
+type MessageWriteRequest struct {
+	TaskID      string
+	ChatID      int64
+	MessageBody string
+}
+
+type MessageTaskStatus struct {
+	Status        string // "Pending", "Completed", "Error"
+	MessageNumber int64
+	Error         string
+}
+
+func CreateMessageHandlers() *MessageHandlers {
 	messagesDbHandler := database.NewMessagesDatabaseHandler()
 	chatsDbHandler := database.NewChatsDatabaseHandler()
 	applicationsDbHandler := database.NewApplicationsDatabaseHandler()
 
-	return &MessageHandler{MessagesDBHandler: messagesDbHandler, ChatsDBHandler: chatsDbHandler, ApplicationsDBHandler: applicationsDbHandler}
+	handler := &MessageHandlers{
+		MessagesDBHandler:     messagesDbHandler,
+		ChatsDBHandler:        chatsDbHandler,
+		ApplicationsDBHandler: applicationsDbHandler,
+		WriteQueue:            make(chan MessageWriteRequest, 1000),
+		TaskStatusMap:         make(map[string]*MessageTaskStatus),
+	}
+
+	go handler.startWorker()
+
+	return handler
 }
 
-func (h *MessageHandler) HandleCreateMessage(c echo.Context) error {
+func (h *MessageHandlers) startWorker() {
+	for req := range h.WriteQueue {
+		status := h.TaskStatusMap[req.TaskID]
+		messageNum, err := h.MessagesDBHandler.InsertMessage(req.ChatID, req.MessageBody)
+		if err != nil {
+			log.Printf("Error inserting message: %v", err)
+			status.Status = "Error"
+			status.Error = "Failed to create message"
+		} else {
+			status.Status = "Completed"
+			status.MessageNumber = messageNum
+		}
+	}
+}
+
+func (h *MessageHandlers) HandleCreateMessage(c echo.Context) error {
 	token := c.Param("token")
 	chatNumber, err := parseInt64Param("chat_number", c)
 	if err != nil {
@@ -43,24 +83,51 @@ func (h *MessageHandler) HandleCreateMessage(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	chatId, err := h.getChatIdFromAppTokenAndChatNumber(token, chatNumber)
+	chatID, err := h.getChatIdFromAppTokenAndChatNumber(token, chatNumber)
 	if err != nil {
 		log.Printf("error getting chat id: %v", err)
 		return echo.ErrInternalServerError
 	}
 
-	messageNum, err := h.MessagesDBHandler.InsertMessage(chatId, request.Body)
-	if err != nil {
-		log.Printf("error inserting message: %v", err)
-		return echo.ErrInternalServerError
+	// Generate a unique task ID
+	taskID := uuid.New().String()
+
+	h.TaskStatusMap[taskID] = &MessageTaskStatus{
+		Status: "Pending",
 	}
 
-	response := &response[createMessageResponse]{Data: createMessageResponse{MessageNumber: messageNum}}
+	// Push the request to the queue
+	h.WriteQueue <- MessageWriteRequest{
+		TaskID:      taskID,
+		ChatID:      chatID,
+		MessageBody: request.Body,
+	}
 
-	return c.JSON(http.StatusOK, response)
+	// Respond with the status-check URL
+	statusURL := c.Scheme() + "://" + c.Request().Host + "/messages/status/" + taskID
+	return c.JSON(http.StatusAccepted, map[string]string{
+		"status_url": statusURL,
+	})
 }
 
-func (h *MessageHandler) HandleGetAllMessagesForChat(c echo.Context) error {
+func (h *MessageHandlers) HandleGetMessageStatus(c echo.Context) error {
+	taskID := c.Param("taskID")
+
+	status, exists := h.TaskStatusMap[taskID]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"error": "Task not found",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status":         status.Status,
+		"message_number": status.MessageNumber,
+		"error":          status.Error,
+	})
+}
+
+func (h *MessageHandlers) HandleGetAllMessagesForChat(c echo.Context) error {
 	token := c.Param("token")
 	chatNumber, err := parseInt64Param("chat_number", c)
 	if err != nil {
@@ -90,7 +157,7 @@ func (h *MessageHandler) HandleGetAllMessagesForChat(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *MessageHandler) HandleGetMessage(c echo.Context) error {
+func (h *MessageHandlers) HandleGetMessage(c echo.Context) error {
 	token := c.Param("token")
 	chatNumber, err := parseInt64Param("chat_number", c)
 	if err != nil {
@@ -123,7 +190,7 @@ func (h *MessageHandler) HandleGetMessage(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *MessageHandler) HandleUpdateMessageBody(c echo.Context) error {
+func (h *MessageHandlers) HandleUpdateMessageBody(c echo.Context) error {
 	token := c.Param("token")
 	chatNumber, err := parseInt64Param("chat_number", c)
 	if err != nil {
@@ -166,7 +233,7 @@ func (h *MessageHandler) HandleUpdateMessageBody(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *MessageHandler) HandleSearchMessages(c echo.Context) error {
+func (h *MessageHandlers) HandleSearchMessages(c echo.Context) error {
 	token := c.Param("token")
 	chatNumber, err := parseInt64Param("chat_number", c)
 	if err != nil {
@@ -199,7 +266,7 @@ func (h *MessageHandler) HandleSearchMessages(c echo.Context) error {
 					map[string]interface{}{
 						"wildcard": map[string]interface{}{
 							"body": map[string]interface{}{
-								"value": "*" + request.Query + "*",
+								"value": "*" + request.Query + "*", // Matching any part of the string
 							},
 						},
 					},
@@ -245,7 +312,7 @@ func (h *MessageHandler) HandleSearchMessages(c echo.Context) error {
 	return c.JSON(http.StatusOK, filteredResults)
 }
 
-func (h *MessageHandler) getChatIdFromAppTokenAndChatNumber(token string, chatNumber int64) (int64, error) {
+func (h *MessageHandlers) getChatIdFromAppTokenAndChatNumber(token string, chatNumber int64) (int64, error) {
 	applicationId, err := h.ApplicationsDBHandler.GetApplicationIdByToken(token)
 	if err != nil {
 		log.Printf("error getting app id: %v", err)
