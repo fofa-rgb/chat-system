@@ -88,10 +88,16 @@ func (h *ApplicationHandlers) HandleUpdateApplicationName(c echo.Context) error 
 		log.Printf("error validating request: %v", err)
 		return echo.ErrBadRequest
 	}
-	err := h.DBHandler.UpdateApplicationName(token, request.NewName)
+	newApp, err := h.DBHandler.UpdateApplicationName(token, request.NewName)
 	if err != nil {
 		log.Printf("error updating application: %v", err)
 		return echo.ErrInternalServerError
 	}
-	return c.NoContent(http.StatusAccepted)
+
+	response := &response[models.UserExposedApplication]{Data: models.UserExposedApplication{
+		Name:       newApp.Name,
+		Token:      newApp.Token,
+		ChatsCount: newApp.ChatsCount,
+	}}
+	return c.JSON(http.StatusOK, response)
 }

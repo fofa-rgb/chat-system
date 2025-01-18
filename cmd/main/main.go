@@ -46,13 +46,13 @@ func main() {
 	e.POST("/applications", appHandlers.HandleCreateApplication)
 	e.GET("/applications", appHandlers.HandleGetAllApplications)
 	e.GET("/applications/:token", appHandlers.HandleGetApplicationByToken)
-	e.PUT("/applications/:token", appHandlers.HandleUpdateApplicationName)
+	e.PATCH("/applications/:token", appHandlers.HandleUpdateApplicationName)
 
 	// Chats routes
 	e.POST("/applications/:token/chats", chatHandlers.HandleCreateChat)
 	e.GET("/applications/:token/chats", chatHandlers.HandleGetAllChatsForApplication)
 	e.GET("/applications/:token/chats/:number", chatHandlers.HandleGetChat)
-	e.PUT("/applications/:token/chats/:number", placeHolderHandler)
+	e.PATCH("/applications/:token/chats/:number", chatHandlers.HandleUpdateChatSubject)
 
 	// Messages routes
 	e.POST("/applications/:token/chats/:chat_number/messages", placeHolderHandler)

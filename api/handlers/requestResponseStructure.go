@@ -25,3 +25,7 @@ type createChatRequest struct {
 type createChatResponse struct {
 	ChatNumber int64 `json:"chatNumber" validate:"required"`
 }
+
+type updateChatRequest struct {
+	NewSubject string `json:"newSubject" validate:"required"`
+}

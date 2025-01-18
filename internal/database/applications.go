@@ -49,14 +49,36 @@ func (r *ApplicationsDatabaseHandler) GetAllApplications() ([]models.Application
 	return allApplications, nil
 }
 
-func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name string) error {
-	query := "UPDATE Applications SET name = ? WHERE token = ?"
-	_, err := r.database.Exec(query, name, token)
+func (r *ApplicationsDatabaseHandler) UpdateApplicationName(token string, name string) (models.Application, error) {
+	application := models.Application{}
+	query := `
+        UPDATE Applications
+        SET name = ?
+        WHERE token = ?
+    `
+	tx := r.database.MustBegin()
+	defer tx.Rollback()
+
+	_, err := tx.Exec(query, name, token)
 	if err != nil {
-		return fmt.Errorf("failed to update application: %w", err)
+		return models.Application{}, fmt.Errorf("failed to update application name: %w", err)
 	}
 
-	return nil
+	fetchQuery := `
+        SELECT *
+        FROM Applications
+        WHERE token = ?
+    `
+	err = tx.Get(&application, fetchQuery, token)
+	if err != nil {
+		return models.Application{}, fmt.Errorf("failed to fetch updated application: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return models.Application{}, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return application, nil
 }
 
 func (r *ApplicationsDatabaseHandler) GetApplicationIdByToken(token string) (int64, error) {

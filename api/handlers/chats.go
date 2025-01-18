@@ -111,3 +111,44 @@ func (h *ChatHandlers) HandleGetChat(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
+
+func (h *ChatHandlers) HandleUpdateChatSubject(c echo.Context) error {
+	token := c.Param("token")
+	chatNumberStr := c.Param("number")
+	request := new(updateChatRequest)
+	if err := c.Bind(request); err != nil {
+		log.Printf("error binding request: %v", err)
+		return echo.ErrBadRequest
+	}
+	if err := c.Validate(request); err != nil {
+		log.Printf("error validating request: %v", err)
+		return echo.ErrBadRequest
+	}
+	chatNumber, err := strconv.ParseInt(chatNumberStr, 10, 64)
+	if err != nil {
+		log.Printf("error parsing chat number: %v", err)
+		return echo.ErrBadRequest
+	}
+
+	applicationId, err := h.ApplicationsDBHandler.GetApplicationIdByToken(token)
+	if err != nil {
+		log.Printf("error getting app id: %v", err)
+		return echo.ErrInternalServerError
+	}
+
+	chat, err := h.ChatsDBHandler.UpdateChatSubject(applicationId, chatNumber, request.NewSubject)
+	if err != nil {
+		log.Printf("error getting chat: %v", err)
+		return echo.ErrInternalServerError
+	}
+
+	userExposedChat := models.UserExposedChat{
+		Subject:       chat.Subject,
+		Number:        chat.Number,
+		MessagesCount: chat.MessagesCount,
+	}
+
+	response := &response[models.UserExposedChat]{Data: userExposedChat}
+
+	return c.JSON(http.StatusOK, response)
+}

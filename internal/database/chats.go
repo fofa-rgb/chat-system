@@ -43,7 +43,7 @@ func (r *ChatsDatabaseHandler) InsertChat(appId int64, subject string) (int64, e
 func (r *ChatsDatabaseHandler) GetChatByApplicationIdAndChatNumber(appId int64, chatNumber int64) (models.Chat, error) {
 	chat := models.Chat{}
 	query := "SELECT * FROM Chats WHERE application_id = ? AND number = ?"
-	err := r.database.Get(&chat, query, appId)
+	err := r.database.Get(&chat, query, appId, chatNumber)
 	if err != nil {
 		return models.Chat{}, fmt.Errorf("failed to get chat: %w", err)
 	}
@@ -59,18 +59,36 @@ func (r *ChatsDatabaseHandler) GetAllChatsForAnApp(appId int64) ([]models.Chat, 
 	}
 	return allChats, nil
 }
-
-func (r *ChatsDatabaseHandler) GetChatIdFromAppTokenAndChatNum(appToken string, chatNumber int64) (int64, error) {
-	var chatID int64
+func (r *ChatsDatabaseHandler) UpdateChatSubject(appId int64, chatNumber int64, newSubject string) (models.Chat, error) {
+	chat := models.Chat{}
 	query := `
-		SELECT c.id
-		FROM Chats c
-		INNER JOIN Applications a ON c.application_id = a.id
-		WHERE a.token = ? AND c.number = ?
-	`
-	err := r.database.Get(&chatID, query, appToken, chatNumber)
+        UPDATE Chats
+        SET subject = ?
+        WHERE application_id = ? AND number = ?
+    `
+
+	// Start a transaction
+	tx := r.database.MustBegin()
+	defer tx.Rollback()
+
+	_, err := tx.Exec(query, newSubject, appId, chatNumber)
 	if err != nil {
-		return 0, err
+		tx.Rollback()
+		return models.Chat{}, fmt.Errorf("failed to update chat subject: %w", err)
 	}
-	return chatID, nil
+
+	fetchQuery := `
+        SELECT *
+        FROM Chats
+        WHERE application_id = ? AND number = ?    `
+	err = tx.Get(&chat, fetchQuery, appId, chatNumber)
+	if err != nil {
+		tx.Rollback()
+		return models.Chat{}, fmt.Errorf("failed to fetch updated chat: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return models.Chat{}, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return chat, nil
 }
