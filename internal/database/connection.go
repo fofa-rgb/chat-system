@@ -35,9 +35,14 @@ func InitDB() error {
 }
 
 func ESClientConnection() {
-	client, err := elasticsearch.NewDefaultClient()
+	cfg := elasticsearch.Config{
+		Addresses: []string{
+			"http://elasticsearch:9200",
+		},
+	}
+	client, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Error creating Elasticsearch client: %s", err))
 	}
 	ESClient = client
 }

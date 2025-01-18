@@ -8,8 +8,8 @@ type UserExposedChat struct {
 	MessagesCount int64  `db:"messages_count"`
 }
 type Chat struct {
-	ID            int64 `db:"id"`
-	ApplicationID int64 `db:"application_id"`
+	Id            int64 `db:"id"`
+	ApplicationId int64 `db:"application_id"`
 	UserExposedChat
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`

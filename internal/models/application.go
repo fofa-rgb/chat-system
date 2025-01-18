@@ -9,7 +9,7 @@ type UserExposedApplication struct {
 }
 
 type Application struct {
-	ID int64 `db:"id"`
+	Id int64 `db:"id"`
 	UserExposedApplication
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`

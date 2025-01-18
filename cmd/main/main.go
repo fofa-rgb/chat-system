@@ -61,9 +61,8 @@ func main() {
 	e.GET("/applications/:token/chats/:chat_number/messages/:message_number", messageHandlers.HandleGetMessage)
 	e.PATCH("/applications/:token/chats/:chat_number/messages/:message_number", messageHandlers.HandleUpdateMessageBody)
 	//elastic search messages
-	e.GET("/applications/:token/chats/:chat_number/messages/search", placeHolderHandler)
+	e.GET("/applications/:token/chats/:chat_number/messages/search", messageHandlers.HandleSearchMessages)
 	e.POST("/applications/:token/chats/:chat_number/messages/index", placeHolderHandler)
-
 	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "8080"

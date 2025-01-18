@@ -34,7 +34,14 @@ type updateChatRequest struct {
 type createMessageRequest struct {
 	Body string `json:"body" validate:"required"`
 }
+type createMessageResponse struct {
+	MessageNumber int64 `json:"messageNumber" validate:"required"`
+}
 
 type updateMessageRequest struct {
 	NewBody string `json:"newBody" validate:"required"`
+}
+
+type searchMessageRequest struct {
+	Query string `json:"query" validate:"required"`
 }
