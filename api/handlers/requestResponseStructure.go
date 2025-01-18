@@ -14,7 +14,7 @@ type createApplicationResponse struct {
 	Token string `json:"token"`
 }
 type updateApplicationNameRequest struct {
-	NewName string `json:"newName"`
+	NewName string `json:"newName" validate:"required"`
 }
 
 //chats
