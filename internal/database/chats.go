@@ -101,3 +101,19 @@ func (r *ChatsDatabaseHandler) GetChatIdByAppIdAndChatNumber(appId int64, chatNu
 	}
 	return id, nil
 }
+
+func (r *ChatsDatabaseHandler) UpdateMessagesCount() error {
+	query := `
+		UPDATE Chats c
+		SET messages_count = (
+			SELECT COUNT(*)
+			FROM Messages m
+			WHERE m.chat_id = c.id
+		)
+	`
+	_, err := r.database.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to update messages_count: %w", err)
+	}
+	return nil
+}

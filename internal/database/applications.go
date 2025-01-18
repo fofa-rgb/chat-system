@@ -90,3 +90,19 @@ func (r *ApplicationsDatabaseHandler) GetApplicationIdByToken(token string) (int
 	}
 	return id, nil
 }
+
+func (r *ApplicationsDatabaseHandler) UpdateChatsCount() error {
+	query := `
+		UPDATE Applications a
+		SET chats_count = (
+			SELECT COUNT(*)
+			FROM Chats c
+			WHERE c.application_id = a.id
+		)
+	`
+	_, err := r.database.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to update chats_count: %w", err)
+	}
+	return nil
+}

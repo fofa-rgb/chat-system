@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chat-system/api/cron"
 	"chat-system/api/handlers"
 	"chat-system/internal/database"
 	"net/http"
@@ -28,6 +29,12 @@ func main() {
 	database.InitDB()
 	database.ESClientConnection()
 	database.ESCreateIndexIfNotExist()
+
+	// Start the cron job in a Goroutine
+	go func() {
+		cronJob := cron.NewCronJob()
+		cronJob.Start()
+	}()
 
 	e := echo.New()
 	e.Use(middleware.Logger())
