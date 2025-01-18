@@ -1,6 +1,6 @@
 # Chat System
 
-This repository contains the code for the Chat System API. The application is containerized using Docker Compose, which makes it easy to set up and run.
+This repository contains the code for the Chat System API. The application is containerized using Docker Compose.
 
 ## Prerequisites
 - Docker installed on your machine.
@@ -53,6 +53,40 @@ The `.env` file must include the variables in the `.env-values.txt` file for the
 - Ensure that Docker and Docker Compose are installed and running.
 
 - Verify that the `.env` file exists and contains valid values.
+
+## Database Schema
+The database schema can be found in the following file:  
+`migrations/V1__create_tables.sql`
+
+## API Controllers (Handlers)
+The API controllers are implemented in the following files:  
+- `api/handlers/applications.go`
+- `api/handlers/chats.go`
+- `api/handlers/messages.go`
+
+## Workers and Tasks
+The workers and tasks (cron jobs) are implemented in:  
+`api/cron/cron.go`
+
+## Routes and Parameters
+The routes are defined in:  
+`cmd/main/main.go`
+
+### Path Parameters
+Most user inputs are included as path parameters, visible directly in the routes. Below are specific details for additional required inputs:
+
+#### Additional Parameters
+1. **POST `/applications`**  
+   - **Body**: `{"name": "string"}`
+2. **POST `/applications/:token/chats`**  
+   - **Body**: `{"subject": "string"}`
+3. **POST `/applications/:token/chats/:chat_number/messages`**  
+   - **Body**: `{"body": "string"}`
+4. **GET `/applications/:token/chats/:chat_number/messages/search`**  
+   - **Query**: `{"query": "string"}`
+
+The structure of requests and responses is detailed in:  
+`api/handlers/requestResponseStructure.go`
 
 ## Additional Notes
 - This setup is designed for local development. For production deployment, additional configurations may be required.
