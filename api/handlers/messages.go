@@ -18,6 +18,7 @@ type MessageHandlers struct {
 	ChatsDBHandler        *database.ChatsDatabaseHandler
 	ApplicationsDBHandler *database.ApplicationsDatabaseHandler
 	WriteQueue            chan MessageWriteRequest
+	UpdateQueue           chan MessageUpdateRequest
 	TaskStatusMap         map[string]*MessageTaskStatus
 }
 
@@ -26,11 +27,17 @@ type MessageWriteRequest struct {
 	ChatID      int64
 	MessageBody string
 }
+type MessageUpdateRequest struct {
+	TaskID        string
+	MessageNumber int64
+	ChatID        int64
+	NewBody       string
+}
 
 type MessageTaskStatus struct {
-	Status        string // "Pending", "Completed", "Error"
-	MessageNumber int64
-	Error         string
+	Status string // "Pending", "Completed", "Error"
+	models.UserExposedMessage
+	Error string
 }
 
 func CreateMessageHandlers() *MessageHandlers {
@@ -43,6 +50,7 @@ func CreateMessageHandlers() *MessageHandlers {
 		ChatsDBHandler:        chatsDbHandler,
 		ApplicationsDBHandler: applicationsDbHandler,
 		WriteQueue:            make(chan MessageWriteRequest, 1000),
+		UpdateQueue:           make(chan MessageUpdateRequest, 1000),
 		TaskStatusMap:         make(map[string]*MessageTaskStatus),
 	}
 
@@ -52,16 +60,32 @@ func CreateMessageHandlers() *MessageHandlers {
 }
 
 func (h *MessageHandlers) startWorker() {
-	for req := range h.WriteQueue {
-		status := h.TaskStatusMap[req.TaskID]
-		messageNum, err := h.MessagesDBHandler.InsertMessage(req.ChatID, req.MessageBody)
-		if err != nil {
-			log.Printf("Error inserting message: %v", err)
-			status.Status = "Error"
-			status.Error = "Failed to create message"
-		} else {
-			status.Status = "Completed"
-			status.MessageNumber = messageNum
+	for {
+		select {
+		case createReq := <-h.WriteQueue:
+			status := h.TaskStatusMap[createReq.TaskID]
+			messageNum, err := h.MessagesDBHandler.InsertMessage(createReq.ChatID, createReq.MessageBody)
+			if err != nil {
+				log.Printf("Error inserting message: %v", err)
+				status.Status = "Error"
+				status.Error = "Failed to create message"
+			} else {
+				status.Status = "Completed"
+				status.Number = messageNum
+				status.Body = createReq.MessageBody
+			}
+		case updateReq := <-h.UpdateQueue:
+			status := h.TaskStatusMap[updateReq.TaskID]
+			newMessage, err := h.MessagesDBHandler.UpdateMessageBody(updateReq.ChatID, updateReq.MessageNumber, updateReq.NewBody)
+			if err != nil {
+				log.Printf("Error updating chat: %v", err)
+				status.Status = "Error"
+				status.Error = "Failed to update chat subject"
+			} else {
+				status.Status = "Completed"
+				status.Number = newMessage.Number
+				status.Body = newMessage.Body
+			}
 		}
 	}
 }
@@ -120,11 +144,7 @@ func (h *MessageHandlers) HandleGetMessageStatus(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"status":         status.Status,
-		"message_number": status.MessageNumber,
-		"error":          status.Error,
-	})
+	return c.JSON(http.StatusOK, status)
 }
 
 func (h *MessageHandlers) HandleGetAllMessagesForChat(c echo.Context) error {
@@ -211,26 +231,31 @@ func (h *MessageHandlers) HandleUpdateMessageBody(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	chatId, err := h.getChatIdFromAppTokenAndChatNumber(token, chatNumber)
+	chatID, err := h.getChatIdFromAppTokenAndChatNumber(token, chatNumber)
 	if err != nil {
 		log.Printf("error getting chat id: %v", err)
 		return echo.ErrInternalServerError
 	}
 
-	updatedMessage, err := h.MessagesDBHandler.UpdateMessageBody(chatId, messageNumber, request.NewBody)
-	if err != nil {
-		log.Printf("error updating message: %v", err)
-		return echo.ErrInternalServerError
+	taskID := uuid.New().String()
+
+	h.TaskStatusMap[taskID] = &MessageTaskStatus{
+		Status: "Pending",
 	}
 
-	userExposedMessage := models.UserExposedMessage{
-		Body:   updatedMessage.Body,
-		Number: updatedMessage.Number,
+	// Push the update request to the UpdateQueue
+	h.UpdateQueue <- MessageUpdateRequest{
+		TaskID:        taskID,
+		ChatID:        chatID,
+		MessageNumber: messageNumber,
+		NewBody:       request.NewBody,
 	}
 
-	response := &response[models.UserExposedMessage]{Data: userExposedMessage}
-
-	return c.JSON(http.StatusOK, response)
+	// Respond with the status-check URL
+	statusURL := c.Scheme() + "://" + c.Request().Host + "/messages/status/" + taskID
+	return c.JSON(http.StatusAccepted, map[string]string{
+		"status_url": statusURL,
+	})
 }
 
 func (h *MessageHandlers) HandleSearchMessages(c echo.Context) error {

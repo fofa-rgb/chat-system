@@ -60,7 +60,7 @@ func main() {
 	e.POST("/applications/:token/chats", chatHandlers.HandleCreateChat)
 	e.GET("/applications/:token/chats", chatHandlers.HandleGetAllChatsForApplication)
 	e.GET("/applications/:token/chats/:chat_number", chatHandlers.HandleGetChat)
-	e.PATCH("/applications/:token/chats/:chat_number", chatHandlers.HandleUpdateChatSubject)
+	e.PATCH("/applications/:token/chats/:chat_number", chatHandlers.HandleQueueUpdateChat)
 
 	// Messages routes
 	e.POST("/applications/:token/chats/:chat_number/messages", messageHandlers.HandleCreateMessage)
